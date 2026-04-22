@@ -9,6 +9,14 @@ class Client extends Model
 {
     use HasUuids;
 
+    protected $primaryKey = 'user_id';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = ["user_id","address"];
+
     public function user(){
         return $this->belongsTo(User::class);
     }
