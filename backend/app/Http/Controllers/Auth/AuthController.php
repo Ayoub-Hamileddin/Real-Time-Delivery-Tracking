@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
 use App\Helper\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\AuthLogin;
 use App\Http\Requests\Auth\AuthRegister;
 use App\Http\Resources\UserRessource;
 use App\Services\AuthService;
@@ -27,8 +29,19 @@ class AuthController extends Controller
             return ApiResponse::success("register successfuly",new UserRessource($response),"success",200);
 
         } catch (\Throwable $e) {
-            Log::error("Error : something wrong ".$e->getMessage());
+            Log::error("Error : something wrong in registrations ".$e->getMessage());
             return ApiResponse::error("Error while registering","error",500);
+        }
+    }
+
+    public function login(AuthLogin $request){
+        try {
+            $dto = LoginDto::fromRequest($request);
+            $response = $this->authService->authLogin($dto);
+            return ApiResponse::success("login successfuly",$response,"success",200);
+        } catch (\Throwable $e) {
+            Log::error("Error : something wrong in logging ".$e->getMessage());
+            return ApiResponse::error("Error while logging","error",500);
         }
     }
 }

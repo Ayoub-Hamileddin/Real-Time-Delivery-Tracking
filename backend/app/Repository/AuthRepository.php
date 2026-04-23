@@ -32,4 +32,8 @@ class AuthRepository
             "vehicle_type" => $vehicle_type
         ]);
     }
+
+    public function findUserByEmail($email){
+        return User::where("email",$email)->first();
+    }
 }

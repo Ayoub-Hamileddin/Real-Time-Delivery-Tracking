@@ -37,7 +37,7 @@ class BaseRequest extends FormRequest
                 "success" => false ,
                 "message" => "failed validation",
                 "errors" =>$validator->errors()
-            ])
+            ],422)
         );
     }
 }
