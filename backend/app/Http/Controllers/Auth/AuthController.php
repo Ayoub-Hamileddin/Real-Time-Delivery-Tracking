@@ -44,4 +44,9 @@ class AuthController extends Controller
             return ApiResponse::error("Error while logging","error",500);
         }
     }
+
+    public function logout(Request $request){
+        $this->authService->authLogout($request);
+        return ApiResponse::success("Logout successfuly",null,"success",204);
+    }
 }

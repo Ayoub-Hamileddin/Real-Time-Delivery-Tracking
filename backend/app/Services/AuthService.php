@@ -69,4 +69,13 @@ class AuthService
             "user"   => new UserRessource($user)
          ];
     }
+
+    public function authLogout($request){
+
+        $user = $request->user();
+
+        foreach ($user->tokens as $token) {
+            $this->authRepository->revokedToken($token);
+        }
+    }
 }

@@ -36,4 +36,15 @@ class AuthRepository
     public function findUserByEmail($email){
         return User::where("email",$email)->first();
     }
+
+    public function revokedToken($token){
+        $token->revoke();
+
+        DB::table('oauth_refresh_tokens')
+            ->where("access_token_id",$token->id)
+            ->update(['revoked' => true]);
+
+    }
 }
+
+
