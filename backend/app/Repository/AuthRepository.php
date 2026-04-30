@@ -5,7 +5,11 @@ namespace App\Repository;
 use App\Models\Client;
 use App\Models\Driver;
 use App\Models\User;
+use Date;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthRepository
 {
@@ -44,6 +48,21 @@ class AuthRepository
             ->where("access_token_id",$token->id)
             ->update(['revoked' => true]);
 
+    }
+
+    public function emailVerified($user){
+        User::where("id",$user->id)
+        ->updated(["email_verified_at",date('Y-m-d H:i:s')]);
+    }
+
+    public function resetPasswordUser(User $user,string $password){
+        $user->forceFill([
+                    "password" => Hash::make($password),
+                ])->setRememberToken(Str::random(60));
+
+                $user->save();
+
+                event(new PasswordReset($user));
     }
 }
 

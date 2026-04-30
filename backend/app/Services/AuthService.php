@@ -2,13 +2,21 @@
 
 namespace App\Services;
 
+use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
+use App\Helper\ApiResponse;
 use App\Http\Resources\UserRessource;
 use App\Models\User;
 use App\Repository\AuthRepository;
+use Backend\App\Helper\AuthHelper;
+use Exception;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
 
 class AuthService
 {
@@ -43,6 +51,8 @@ class AuthService
             if ($dto->role == "DRIVER") {
                 $this->authRepository->createDriver($user,$dto->vehicle_type);
             }
+            // send email verification
+            $user->sendEmailVerificationNotification();
             return $user;
        });
     }
@@ -50,6 +60,8 @@ class AuthService
     public function authLogin($dto){
 
         $user = $this->authRepository->findUserByEmail($dto->email);
+        // checking user credentials
+        AuthHelper::checkUserCredentials($user,$dto);
 
         $response = Http::asForm()->post(config("services.passport.login_endpoints"), [
             'grant_type' => 'password',
@@ -78,4 +90,50 @@ class AuthService
             $this->authRepository->revokedToken($token);
         }
     }
+
+    public function verifiedEmail($request){
+        $request->fulfill();
+    }
+
+
+    public function resendEmail($request){
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            throw new Exception("Email already verified");
+        }
+
+        $user->sendEmailVerificationNotification();
+
+    }
+
+    public function forgetPasswordLink($dto){
+        $status = Password::sendResetLink($dto->email);
+
+        if ($status!==Password::ResetLinkSent) {
+            throw new Exception("Error in reset Link",$status);
+        }
+    }
+
+    public function resetPassword($dto){
+        $status = Password::reset(
+
+            [
+                'email' => $dto->email,
+                'token' => $dto->token,
+                'password' => $dto->password,
+                'password_confirmation' => $dto->password_confirmation // Darouri khass t-koun!
+            ],
+
+            function(User $user , string $password ){
+                $this->authRepository->resetPasswordUser($user,$password);
+            }
+
+        );
+
+        if ($status!==Password::PasswordReset) {
+            throw new Exception("error while reseting password");
+        }
+    }
+
 }
