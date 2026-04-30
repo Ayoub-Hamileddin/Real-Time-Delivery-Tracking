@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Carbon\CarbonInterval;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
 
@@ -25,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         Passport::enablePasswordGrant();
 
         #specifiy the expires times of tokens
-        Passport::tokensExpireIn(CarbonInterval::days(15));
+        Passport::tokensExpireIn(CarbonInterval::minute(15));
         Passport::refreshTokensExpireIn(CarbonInterval::days(30));
         Passport::personalAccessTokensExpireIn(CarbonInterval::months(6));
 
@@ -34,5 +35,10 @@ class AppServiceProvider extends ServiceProvider
             "deliver-orders" => "Update deliver status and location",
             "manage-orders" => "Create and track orders (customer)",
         ]);
+
+        # CUSTOMIZE RESET LINK PASSWORD
+        ResetPassword::createUrlUsing(function(object $notifiable , string $token ){
+            return 'https://frountend.com/password-reset/' . $token . '?email=' . $notifiable->getEmailForPasswordReset();
+        });
     }
 }
