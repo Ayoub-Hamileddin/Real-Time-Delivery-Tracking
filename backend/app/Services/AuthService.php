@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
+use App\Exceptions\Auth\EmailAlreadyExist;
+use App\Exceptions\Auth\EmailAlreadyExistException;
 use App\Helper\ApiResponse;
 use App\Http\Resources\UserRessource;
 use App\Models\User;
@@ -32,24 +34,35 @@ class AuthService
 
     public function authRegister(RegisterDto $dto){
 
+      $checkEmailAlreadyExist = $this->authRepository->findUserByEmail($dto->email);
+
+      if ($checkEmailAlreadyExist) {
+        throw new EmailAlreadyExistException();
+      }
+
        $dto->password = Hash::make($dto->password);
-
+        // transaction logic
        return DB::transaction(function () use ($dto){
-
+        // create user
        $user = $this->authRepository->createUser([
                 "full_name" => $dto->full_name,
                 "phone_number" => $dto->phone_number,
                 "email" => $dto->email,
                 "password" => $dto->password,
-                "role" => $dto->role,
                 "address" => $dto->address,
             ]);
+            // assign role
+            $user->assignRole(strtolower($dto->role));
 
-            if ($dto->role == "CLIENT") {
+            if ($user->hasRole("client")) {
                 $this->authRepository->createClient($user,$dto->address);
+                // assign permissions
+                $user->givePermissionTo("manage-orders");
             }
-            if ($dto->role == "DRIVER") {
+            if ($user->hasRole("driver")) {
                 $this->authRepository->createDriver($user,$dto->vehicle_type);
+                // assign permissions
+                $user->givePermissionTo("deliver-orders");
             }
             // send email verification
             $user->sendEmailVerificationNotification();
@@ -69,7 +82,7 @@ class AuthService
             'client_secret' => config("services.passport.client_secret"),
             'username' => $dto->email,
             'password' => $dto->password,
-            'scope' => $user["role"] == "CLIENT" ? "manage-orders" : "deliver-orders",
+            'scope' => $user->hasRole("client") ? "manage-orders" : "deliver-orders",
         ]);
 
          $data = $response->json();
@@ -83,12 +96,8 @@ class AuthService
     }
 
     public function authLogout($request){
-
         $user = $request->user();
-
-        foreach ($user->tokens as $token) {
-            $this->authRepository->revokedToken($token);
-        }
+        $user->token()->revoke();
     }
 
     public function verifiedEmail($request){
@@ -117,7 +126,6 @@ class AuthService
 
     public function resetPassword($dto){
         $status = Password::reset(
-
             [
                 'email' => $dto->email,
                 'token' => $dto->token,
