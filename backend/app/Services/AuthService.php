@@ -16,6 +16,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
@@ -37,6 +38,12 @@ class AuthService
       $checkEmailAlreadyExist = $this->authRepository->findUserByEmail($dto->email);
 
       if ($checkEmailAlreadyExist) {
+        Log::channel('auth')->warning(
+            'Failed register - email already exist',
+            [
+                'email' => $dto->email,
+            ]
+        );
         throw new EmailAlreadyExistException();
       }
 
@@ -51,6 +58,13 @@ class AuthService
                 "password" => $dto->password,
                 "address" => $dto->address,
             ]);
+            Log::channel('auth')->info(
+                'User created',
+                [
+                    'user' => $user,
+                ]
+            );
+
             // assign role
             $user->assignRole(strtolower($dto->role));
 
@@ -66,6 +80,13 @@ class AuthService
             }
             // send email verification
             $user->sendEmailVerificationNotification();
+            Log::channel('auth')->warning(
+                'email verification send',
+                [
+                    'email' => $dto->email,
+                ]
+            );
+
             return $user;
        });
     }
@@ -76,6 +97,13 @@ class AuthService
         // checking user credentials
         AuthHelper::checkUserCredentials($user,$dto);
 
+        Log::channel("auth")->info(
+            'Loging attempt starting',
+            [
+                'user_id' => $user->id
+            ]
+        );
+
         $response = Http::asForm()->post(config("services.passport.login_endpoints"), [
             'grant_type' => 'password',
             'client_id' => config("services.passport.client_id"),
@@ -84,6 +112,14 @@ class AuthService
             'password' => $dto->password,
             'scope' => $user->hasRole("client") ? "manage-orders" : "deliver-orders",
         ]);
+        if ($response->failed()) {
+            Log::channel('auth')->error("Oauth Server error",[
+                "user_id" =>$user->id,
+                'response' => $response->body(),
+            ]);
+
+            throw new exception("Authentication server error");
+        }
 
          $data = $response->json();
 
@@ -98,6 +134,10 @@ class AuthService
     public function authLogout($request){
         $user = $request->user();
         $user->token()->revoke();
+
+        Log::channel("auth")->info("User Logout out",[
+            "user_id" => $user->id
+        ]);
     }
 
     public function verifiedEmail($request){
@@ -142,6 +182,10 @@ class AuthService
         if ($status!==Password::PasswordReset) {
             throw new Exception("error while reseting password");
         }
+
+        Log::channel('auth')->info('Password reset Requested',[
+            "email" =>$dto->email
+        ]);
     }
 
 }

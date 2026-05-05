@@ -1,17 +1,27 @@
 <?php
 namespace Backend\App\Helper;
 
+use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Helper\ApiResponse;
 use Exception;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class AuthHelper{
 
     public static function rateLimiting($request){
-        $key = "login-".$request->ip();
+        $ip  = $request->ip();
+        $key = "login-".$ip;
 
         if (RateLimiter::tooManyAttempts($key,5)) {
+
+            Log::channel('auth')->warning(
+                'Rate limiting exceeded',[
+                'ip' => $ip,
+                'email' => $request->input('email'),
+            ]);
+
             return ApiResponse::error("To many Attempts","error",429);
         }
         RateLimiter::hit($key,60);
@@ -22,7 +32,13 @@ class AuthHelper{
             throw new Exception("Email not verified");
         }
         if (!$user || !Hash::check($dto->password,$user->password)) {
-            throw new Exception("Invalids credentials");
+
+            Log::channel('auth')->warning(
+                "Failed auth login",[
+                'ip' => request()->ip(),
+                'email' => $dto->email,
+            ]);
+            throw new InvalidCredentialsException();
         }
     }
 }

@@ -27,33 +27,23 @@ class AuthController extends Controller
 
 
     public function register(AuthRegister $request){
-        try {
-             AuthHelper::rateLimiting($request);
+
+            AuthHelper::rateLimiting($request);
 
             $dto = RegisterDto::fromRequest($request);
             $response = $this->authService->authRegister($dto);
 
             return ApiResponse::success("register successfuly",new UserRessource($response),"success",200);
 
-        } catch (\Throwable $e) {
-            Log::error("Error : something wrong in registrations ".$e->getMessage());
-            return ApiResponse::error("Error while registering","error",500);
-        }
     }
 
     public function login(AuthLogin $request){
-        try {
-
             AuthHelper::rateLimiting($request);
 
             $dto = LoginDto::fromRequest($request);
             $response = $this->authService->authLogin($dto);
 
             return ApiResponse::success("login successfuly",$response,"success",200);
-        } catch (\Throwable $e) {
-            Log::error("Error : something wrong in logging ".$e->getMessage());
-            return ApiResponse::error("Error while logging","error",500);
-        }
     }
 
     public function logout(Request $request){
@@ -63,42 +53,28 @@ class AuthController extends Controller
 
 
     public function verifiedEmail(Request $request){
-        try {
-            $this->authService->verifiedEmail($request);
-            return ApiResponse::success("Email verified successfuly");
-        } catch (\Throwable $e) {
-            Log::error("Error : verifiying email ".$e->getMessage());
-            return ApiResponse::error("Error while verifiying email","error",500);
-        }
+
+        $this->authService->verifiedEmail($request);
+        return ApiResponse::success("Email verified successfuly");
     }
 
     public function resendEmail(Request $request){
-        try {
-            $this->authService->resendEmail($request);
-            return ApiResponse::success("Verification email sent");
-        } catch (\Throwable $e) {
-            Log::error("Error : verifiying email ".$e->getMessage());
-            return ApiResponse::error("Error while sending email","error",500);
-        }
+
+        $this->authService->resendEmail($request);
+        return ApiResponse::success("Verification email sent");
     }
+
     public function forgetPassword(ResetlinkRequest $request){
-        try {
-            $dto = ResetlinkDto::fromRequest($request);
-            $this->authService->forgetPasswordLink($dto);
-            return ApiResponse::success("Reset password link sent successfuly");
-        } catch (\Throwable $e) {
-            Log::error("Error : resent link  ".$e->getMessage());
-            return ApiResponse::error("Error while sending resent link","error",500);
-        }
+
+        $dto = ResetlinkDto::fromRequest($request);
+        $this->authService->forgetPasswordLink($dto);
     }
+
+
     public function resetPassword(ResetPasswordRequest $request){
-        try {
-            $dto = ResetPasswordDto::fromRequest($request);
-            $this->authService->resetPassword($dto);
-            return ApiResponse::success("password updated successfuly");
-        } catch (\Throwable $e) {
-            Log::error("Error : updating password  ".$e->getMessage());
-            return ApiResponse::error("Error while updating password ","error",500);
-        }
+
+        $dto = ResetPasswordDto::fromRequest($request);
+        $this->authService->resetPassword($dto);
     }
+
 }

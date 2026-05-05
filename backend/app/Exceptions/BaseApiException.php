@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Exception;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 use Override;
 
@@ -27,7 +28,14 @@ class BaseApiException extends Exception
         $this->errors = $errors;
     }
 
-    public function render(){
+    public function render($request,Throwable $e){
+
+        Log::error("Unhandled exception",[
+            "message" =>$e->getMessage(),
+            "file" =>$e->getFile(),
+            "line" =>$e->getLine(),
+        ]);
+
         return response()->json([
             'success' => false,
             'message' => $this->getMessage(),
