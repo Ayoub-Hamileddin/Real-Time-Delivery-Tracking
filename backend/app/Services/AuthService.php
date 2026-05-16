@@ -1,0 +1,252 @@
+<?php
+
+namespace App\Services;
+
+use App\Dto\Auth\LoginDto;
+use App\Dto\Auth\RegisterDto;
+use App\Exceptions\Auth\EmailAlreadyExist;
+use App\Exceptions\Auth\EmailAlreadyExistException;
+use App\Helper\ApiResponse;
+use App\Http\Resources\UserRessource;
+use App\Models\User;
+use App\Repository\AuthRepository;
+use App\Services\Prometheus\PrometheusService;
+use App\Helper\AuthHelper;
+use Exception;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
+
+class AuthService
+{
+    private AuthRepository $authRepository;
+    private PrometheusService $registry;
+    /**
+     * Create a new class instance.
+     */
+    public function __construct(AuthRepository $authRepository,PrometheusService $registry)
+    {
+        $this->authRepository = $authRepository;
+        $this->registry = $registry;
+    }
+
+
+    public function authRegister(RegisterDto $dto){
+
+      $checkEmailAlreadyExist = $this->authRepository->findUserByEmail($dto->email);
+
+      if ($checkEmailAlreadyExist) {
+        Log::channel('auth')->warning(
+            'Failed register - email already exist',
+            [
+                'email' => $dto->email,
+            ]
+        );
+        throw new EmailAlreadyExistException();
+      }
+
+       $dto->password = Hash::make($dto->password);
+        // transaction logic
+       return DB::transaction(function () use ($dto){
+        // create user
+       $user = $this->authRepository->createUser([
+                "full_name" => $dto->full_name,
+                "phone_number" => $dto->phone_number,
+                "email" => $dto->email,
+                "password" => $dto->password,
+                "address" => $dto->address,
+            ]);
+            Log::channel('auth')->info(
+                'User created',
+                [
+                    'user' => $user,
+                ]
+            );
+
+            // assign role
+            $user->assignRole(strtolower($dto->role));
+
+            if ($user->hasRole("client")) {
+                $this->authRepository->createClient($user,$dto->address);
+                // assign permissions
+                $user->givePermissionTo("manage-orders");
+            }
+            if ($user->hasRole("driver")) {
+                $this->authRepository->createDriver($user,$dto->vehicle_type);
+                // assign permissions
+                $user->givePermissionTo("deliver-orders");
+            }
+            // send email verification
+            $user->sendEmailVerificationNotification();
+
+            Log::channel('auth')->warning(
+                'email verification send',
+                [
+                    'email' => $dto->email,
+                ]
+            );
+
+            // calc metric (monitorings)
+            $activeUser = $this->registry
+                            ->getRegistry()
+                            ->getOrRegisterCounter(
+                                "auth",
+                                "register_success_total",
+                                "Total successful registers "
+                            );
+
+            $activeUser->inc();
+
+
+            return $user;
+       });
+    }
+
+    public function authLogin($dto){
+
+        $user = $this->authRepository->findUserByEmail($dto->email);
+        // checking user credentials
+        AuthHelper::checkUserCredentials($user,$dto);
+
+        Log::channel("auth")->info(
+            'Loging attempt starting',
+            [
+                'user_id' => $user->id
+            ]
+        );
+
+        $response = Http::asForm()->post(config("services.passport.login_endpoints"), [
+            'grant_type' => 'password',
+            'client_id' => config("services.passport.client_id"),
+            'client_secret' => config("services.passport.client_secret"),
+            'username' => $dto->email,
+            'password' => $dto->password,
+            'scope' => $user->hasRole("client") ? "manage-orders" : "deliver-orders",
+        ]);
+        if ($response->failed()) {
+            Log::channel('auth')->error("Oauth Server error",[
+                "user_id" =>$user->id,
+                'response' => $response->body(),
+            ]);
+
+            throw new exception("Authentication server error");
+        }
+
+         $data = $response->json();
+
+        // calc metric (monitorings)
+        $successfulLogin = $this->registry
+                        ->getRegistry()
+                        ->getOrRegisterCounter(
+                            "auth",
+                            "login_success_total",
+                            "Total successful Logins "
+                        );
+
+        $successfulLogin->inc();
+
+         return [
+            "access_token" => $data["access_token"],
+            "refresh_token" => $data["refresh_token"],
+            "expires_in" => $data["expires_in"],
+            "user"   => new UserRessource($user)
+         ];
+    }
+
+    public function authLogout($request){
+        $user = $request->user();
+        $user->token()->revoke();
+
+        Log::channel("auth")->info("User Logout out",[
+            "user_id" => $user->id
+        ]);
+
+        $successfulLogout = $this->registry
+                        ->getRegistry()
+                        ->getOrRegisterCounter(
+                            "auth",
+                            "logout_success_total",
+                            "Total successful logout "
+                        );
+
+        $successfulLogout->inc();
+    }
+
+    public function verifiedEmail($request){
+        // extract user id
+        $userId = $request->id;
+        // find the user
+        $user = User::findOrFail($userId);
+
+        if (!$user) {
+            throw new Exception("User Not Found");
+        }
+
+        $hashWord = (string)$request->hash;
+
+        if (!hash_equals($hashWord,sha1($user->getEmailForVerification()))) {
+            return ApiResponse::error("hashing keyword mismatch","error","403");
+        }
+        // check if email already verified
+        if ($user->hasVerifiedEmail()) {
+            return ApiResponse::error("Email already Verified","error",409);
+        }
+
+        // email verified
+        $user->markEmailAsVerified();
+
+        Log::channel('auth')->info("email verified successfuly",["user_id" => $user->email]);
+
+
+    }
+
+
+    public function resendEmail($request){
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            throw new Exception("Email already verified");
+        }
+
+        $user->sendEmailVerificationNotification();
+
+    }
+
+    public function forgetPasswordLink($request){
+        $status = Password::sendResetLink(["email"=>$request->email]);
+
+        if ($status!==Password::ResetLinkSent) {
+            throw new Exception("Error in reset Link",$status);
+        }
+    }
+
+    public function resetPassword($request){
+        $status = Password::reset(
+            [
+                'email' => $request->email,
+                'token' => $request->token,
+                'password' => $request->password,
+                'password_confirmation' => $request->password_confirmation
+            ],
+
+            function(User $user , string $password ){
+                $this->authRepository->resetPasswordUser($user,$password);
+            }
+
+        );
+
+        if ($status!==Password::PasswordReset) {
+            throw new Exception("error while reseting password");
+        }
+
+        Log::channel('auth')->info('Password reset Requested',[
+            "email" =>$request->email
+        ]);
+    }
+
+}

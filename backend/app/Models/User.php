@@ -4,16 +4,24 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use Illuminate\Auth\Passwords\CanResetPassword as PasswordsCanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail , CanResetPassword
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable,HasUuids,HasApiTokens;
+    use HasFactory, Notifiable,HasUuids,HasApiTokens,HasRoles;
+
+
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     /**
      * The attributes that are mass assignable.
@@ -24,6 +32,7 @@ class User extends Authenticatable
         'full_name',
         'phone_number',
         "role",
+        "address",
         'email',
         'password',
     ];

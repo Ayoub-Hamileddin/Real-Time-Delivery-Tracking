@@ -34,5 +34,21 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    "passport" => [
+        'client_id' => env('PASSPORT_CLIENT_ID'),
+        'client_secret' => env('PASSPORT_CLIENT_SECRET'),
+        "login_endpoints" => "http://localhost:8001/oauth/token"
+    ],
+
+    'mail_smtp' => [
+        'host' => env('MAIL_HOST'),
+        'port' => env('MAIL_PORT'),
+        'username' => env('MAIL_USERNAME'),
+        'password' => env('MAIL_PASSWORD'),
+        'encryption' => env('MAIL_ENCRYPTION'),
+        'from_address' => env('MAIL_FROM_ADDRESS'),
+        'from_name' => env('MAIL_FROM_NAME'),
+    ],
+
 
 ];

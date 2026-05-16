@@ -15,3 +15,5 @@
 *.log
 daily_notes.txt
 daily_notes
+
+/vendor

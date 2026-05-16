@@ -52,6 +52,18 @@ return [
 
     'channels' => [
 
+
+        'auth' => [
+            'driver' => "daily",
+            'path' => storage_path('logs/auth.log'),
+            'level' => "info",
+        ],
+        'delivery' => [
+            'driver' => "daily",
+            'path' => storage_path('logs/delivery.log'),
+            'level' => "info",
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', env('LOG_STACK', 'single')),
