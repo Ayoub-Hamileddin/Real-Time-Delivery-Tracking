@@ -1,6 +1,7 @@
 <?php
-namespace Backend\App\Helper;
+namespace App\Helper;
 
+use App\Exceptions\Auth\EmailNotVerifiedException;
 use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Helper\ApiResponse;
 use Exception;
@@ -27,9 +28,9 @@ class AuthHelper{
         RateLimiter::hit($key,60);
     }
 
-    public  static function checkUserCredentials($user,$dto){
+    public  static function  checkUserCredentials($user,$dto){
         if (!$user->hasVerifiedEmail()) {
-            throw new Exception("Email not verified");
+            throw new EmailNotVerifiedException();
         }
         if (!$user || !Hash::check($dto->password,$user->password)) {
 
@@ -38,6 +39,7 @@ class AuthHelper{
                 'ip' => request()->ip(),
                 'email' => $dto->email,
             ]);
+
             throw new InvalidCredentialsException();
         }
     }

@@ -10,7 +10,8 @@ use App\Helper\ApiResponse;
 use App\Http\Resources\UserRessource;
 use App\Models\User;
 use App\Repository\AuthRepository;
-use Backend\App\Helper\AuthHelper;
+use App\Services\Prometheus\PrometheusService;
+use App\Helper\AuthHelper;
 use Exception;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
@@ -24,12 +25,14 @@ use Illuminate\Support\Str;
 class AuthService
 {
     private AuthRepository $authRepository;
+    private PrometheusService $registry;
     /**
      * Create a new class instance.
      */
-    public function __construct(AuthRepository $authRepository)
+    public function __construct(AuthRepository $authRepository,PrometheusService $registry)
     {
         $this->authRepository = $authRepository;
+        $this->registry = $registry;
     }
 
 
@@ -80,12 +83,25 @@ class AuthService
             }
             // send email verification
             $user->sendEmailVerificationNotification();
+
             Log::channel('auth')->warning(
                 'email verification send',
                 [
                     'email' => $dto->email,
                 ]
             );
+
+            // calc metric (monitorings)
+            $activeUser = $this->registry
+                            ->getRegistry()
+                            ->getOrRegisterCounter(
+                                "auth",
+                                "register_success_total",
+                                "Total successful registers "
+                            );
+
+            $activeUser->inc();
+
 
             return $user;
        });
@@ -123,6 +139,17 @@ class AuthService
 
          $data = $response->json();
 
+        // calc metric (monitorings)
+        $successfulLogin = $this->registry
+                        ->getRegistry()
+                        ->getOrRegisterCounter(
+                            "auth",
+                            "login_success_total",
+                            "Total successful Logins "
+                        );
+
+        $successfulLogin->inc();
+
          return [
             "access_token" => $data["access_token"],
             "refresh_token" => $data["refresh_token"],
@@ -138,10 +165,44 @@ class AuthService
         Log::channel("auth")->info("User Logout out",[
             "user_id" => $user->id
         ]);
+
+        $successfulLogout = $this->registry
+                        ->getRegistry()
+                        ->getOrRegisterCounter(
+                            "auth",
+                            "logout_success_total",
+                            "Total successful logout "
+                        );
+
+        $successfulLogout->inc();
     }
 
     public function verifiedEmail($request){
-        $request->fulfill();
+        // extract user id
+        $userId = $request->id;
+        // find the user
+        $user = User::findOrFail($userId);
+
+        if (!$user) {
+            throw new Exception("User Not Found");
+        }
+
+        $hashWord = (string)$request->hash;
+
+        if (!hash_equals($hashWord,sha1($user->getEmailForVerification()))) {
+            return ApiResponse::error("hashing keyword mismatch","error","403");
+        }
+        // check if email already verified
+        if ($user->hasVerifiedEmail()) {
+            return ApiResponse::error("Email already Verified","error",409);
+        }
+
+        // email verified
+        $user->markEmailAsVerified();
+
+        Log::channel('auth')->info("email verified successfuly",["user_id" => $user->email]);
+
+
     }
 
 
@@ -156,21 +217,21 @@ class AuthService
 
     }
 
-    public function forgetPasswordLink($dto){
-        $status = Password::sendResetLink($dto->email);
+    public function forgetPasswordLink($request){
+        $status = Password::sendResetLink(["email"=>$request->email]);
 
         if ($status!==Password::ResetLinkSent) {
             throw new Exception("Error in reset Link",$status);
         }
     }
 
-    public function resetPassword($dto){
+    public function resetPassword($request){
         $status = Password::reset(
             [
-                'email' => $dto->email,
-                'token' => $dto->token,
-                'password' => $dto->password,
-                'password_confirmation' => $dto->password_confirmation // Darouri khass t-koun!
+                'email' => $request->email,
+                'token' => $request->token,
+                'password' => $request->password,
+                'password_confirmation' => $request->password_confirmation
             ],
 
             function(User $user , string $password ){
@@ -184,7 +245,7 @@ class AuthService
         }
 
         Log::channel('auth')->info('Password reset Requested',[
-            "email" =>$dto->email
+            "email" =>$request->email
         ]);
     }
 

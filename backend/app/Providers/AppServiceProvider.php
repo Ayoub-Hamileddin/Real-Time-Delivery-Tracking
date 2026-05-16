@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
 
         # CUSTOMIZE RESET LINK PASSWORD
         ResetPassword::createUrlUsing(function(object $notifiable , string $token ){
-            return 'https://frountend.com/password-reset/' . $token . '?email=' . $notifiable->getEmailForPasswordReset();
+            return 'http://127.0.0.1:8000/api/password-reset/' . $token . '?email=' . $notifiable->getEmailForPasswordReset();
         });
     }
 }

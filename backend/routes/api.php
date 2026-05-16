@@ -3,7 +3,8 @@
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
 
-
+use App\Services\Prometheus\PrometheusService;
+use Prometheus\RenderTextFormat;
 
 Route::controller(AuthController::class)->group(function(){
     Route::prefix("/auth")->name("auth.")->group(function(){
@@ -25,14 +26,18 @@ Route::controller(AuthController::class)->group(function(){
             Route::post("logout","logout")
                 ->name("logout");
 
-            Route::post("/email/verify/{id}/{hash}","verifiedEmail")
-                ->name("verificationEmail");
-
             Route::post('/email/resend',"resendEmail");
 
-            Route::post("reset-password","resetPassword")
+            Route::post("reset-password/{token}","resetPassword")
                 ->name("password.update");
         });
 
     });
+    // In AuthController
+    Route::get("/email/verify/{id}/{hash}","verifiedEmail")
+        ->middleware('signed')
+        ->name("verification.verify");
 });
+
+
+

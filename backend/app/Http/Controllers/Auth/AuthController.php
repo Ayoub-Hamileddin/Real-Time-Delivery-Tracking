@@ -14,9 +14,9 @@ use App\Http\Requests\ResetlinkRequest;
 use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Resources\UserRessource;
 use App\Services\AuthService;
-use Backend\App\Helper\AuthHelper;
+use App\Helper\AuthHelper;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -28,22 +28,22 @@ class AuthController extends Controller
 
     public function register(AuthRegister $request){
 
-            AuthHelper::rateLimiting($request);
+        AuthHelper::rateLimiting($request);
 
-            $dto = RegisterDto::fromRequest($request);
-            $response = $this->authService->authRegister($dto);
+        $dto = RegisterDto::fromRequest($request);
+        $response = $this->authService->authRegister($dto);
 
-            return ApiResponse::success("register successfuly",new UserRessource($response),"success",200);
+        return ApiResponse::success("register successfuly",new UserRessource($response),"success",200);
 
     }
 
     public function login(AuthLogin $request){
-            AuthHelper::rateLimiting($request);
+        AuthHelper::rateLimiting($request);
 
-            $dto = LoginDto::fromRequest($request);
-            $response = $this->authService->authLogin($dto);
+        $dto = LoginDto::fromRequest($request);
+        $response = $this->authService->authLogin($dto);
 
-            return ApiResponse::success("login successfuly",$response,"success",200);
+        return ApiResponse::success("login successfuly",$response,"success",200);
     }
 
     public function logout(Request $request){
@@ -64,17 +64,17 @@ class AuthController extends Controller
         return ApiResponse::success("Verification email sent");
     }
 
-    public function forgetPassword(ResetlinkRequest $request){
+    public function forgetPassword(Request $request){
 
-        $dto = ResetlinkDto::fromRequest($request);
-        $this->authService->forgetPasswordLink($dto);
+        $this->authService->forgetPasswordLink($request);
+        return ApiResponse::success("forget Password link sent");
     }
 
 
-    public function resetPassword(ResetPasswordRequest $request){
+    public function resetPassword(Request $request){
 
-        $dto = ResetPasswordDto::fromRequest($request);
-        $this->authService->resetPassword($dto);
+        $this->authService->resetPassword($request);
+        return ApiResponse::success("Password Reseted successfuly");
     }
 
 }
