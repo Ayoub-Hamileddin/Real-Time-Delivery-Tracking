@@ -9,6 +9,19 @@ class DeliveryTask extends Model
 {
     use HasUuids;
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        "driver_id",
+        "order_id",
+        "status",
+        "pickup_latitude",
+        "pickup_longitude",
+        "dropoff_latitude",
+        "dropoff_longitude",
+    ];
+
     public function order(){
         return $this->belongsTo(Order::class);
     }

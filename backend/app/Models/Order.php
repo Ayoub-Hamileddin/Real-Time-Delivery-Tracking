@@ -9,6 +9,11 @@ class Order extends Model
 {
     use HasUuids;
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = ["client_id","total_price","status","delivery_address"];
+
     public function client(){
         return $this->belongsTo(Client::class);
     }

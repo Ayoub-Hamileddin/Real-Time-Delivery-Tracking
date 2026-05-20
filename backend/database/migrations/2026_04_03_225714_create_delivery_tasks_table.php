@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('delivery_tasks', function (Blueprint $table) {
             $table->uuid("id")->primary();
+
             $table->foreignUuid("driver_id")
+                ->nullable()
                 ->constrained("drivers","user_id")
                 ->onDelete("cascade");
 
@@ -23,7 +25,7 @@ return new class extends Migration
 
             $table->enum('status', ['Pending', 'Picked_up', 'In_transit', 'Delivered', 'Failed'])->default('Pending');
 
-            
+
             $table->decimal('pickup_latitude', 10, 8);
             $table->decimal('pickup_longitude', 11, 8);
             $table->decimal('dropoff_latitude', 10, 8);
