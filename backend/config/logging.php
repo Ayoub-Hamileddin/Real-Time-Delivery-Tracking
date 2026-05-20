@@ -58,9 +58,14 @@ return [
             'path' => storage_path('logs/auth.log'),
             'level' => "info",
         ],
-        'delivery' => [
+        'task' => [
             'driver' => "daily",
-            'path' => storage_path('logs/delivery.log'),
+            'path' => storage_path('logs/task.log'),
+            'level' => "info",
+        ],
+        'order' => [
+            'driver' => "daily",
+            'path' => storage_path('logs/order.log'),
             'level' => "info",
         ],
 
