@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Enum\TaskStatus;
 use App\Models\DeliveryTask;
 
 class DeliveryTaskRepository
@@ -13,7 +14,14 @@ class DeliveryTaskRepository
     }
 
     public function getAll(){
-        return DeliveryTask::paginate(10);
+        return DeliveryTask::
+            where("status",TaskStatus::Pending)
+            ->paginate(10);
+    }
+
+    public function findById($id){
+        return DeliveryTask::where("id",$id)
+        ->first();
     }
 
 }

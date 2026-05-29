@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DeliveryTask;
 use App\Repository\DeliveryTaskRepository;
 
 class TaskService
@@ -20,5 +21,9 @@ class TaskService
 
     public function tasks(){
         return $this->deliveryTaskRepository->getAll();
+    }
+
+    public function findTaskById(string $id){
+        return $this->deliveryTaskRepository->findById($id);
     }
 }
