@@ -13,5 +13,6 @@ use Prometheus\RenderTextFormat;
 */
 Route::group([],__DIR__.'/api/auth.php');
 Route::group([],__DIR__.'/api/orders.php');
+Route::group([],__DIR__.'/api/tasks.php');
 
 

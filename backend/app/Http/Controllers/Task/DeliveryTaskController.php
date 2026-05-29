@@ -24,7 +24,7 @@ class DeliveryTaskController extends Controller
     public function index()
     {
         $tasks = $this->taskService->tasks();
-        return ApiResponse::success("tasks",new DeliveryTaskResource($tasks),"sucess",200);
+        return ApiResponse::success("tasks",DeliveryTaskResource::collection($tasks),"sucess",200);
     }
 
     /**
@@ -40,7 +40,8 @@ class DeliveryTaskController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $task = $this->taskService->findTaskById($id);
+        return ApiResponse::success("getting Task By Id successfuly",new DeliveryTaskResource($task),"success",200);
     }
 
     /**
