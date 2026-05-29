@@ -2,9 +2,9 @@
 
 namespace App\Enum;
 
-enum OrderStatus
+enum OrderStatus :string
 {
-    case CREATED ;
-    case PAID ;
-    case CANCELLED ;
+    case CREATED = "CREATED";
+    case PAID = "PAID";
+    case CANCELLED = "CANCELLED";
 }

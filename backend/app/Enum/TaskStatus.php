@@ -2,11 +2,11 @@
 
 namespace App\Enum;
 
-enum TaskStatus
+enum TaskStatus :string
 {
-    case Pending;
-    case Picked_up;
-    case In_transit;
-    case Delivered;
-    case Failed;
+    case Pending="Pending";
+    case Picked_up="Picked_up";
+    case In_transit="In_transit";
+    case Delivered="Delivered";
+    case Failed="Failed";
 }
