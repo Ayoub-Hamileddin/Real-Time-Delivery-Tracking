@@ -30,6 +30,10 @@ class AuthRepository
             "address"=> $address,
         ]);
     }
+    public function findClientByUserId(User $user){
+        return Client::where("user_id",$user->id)->first();
+    }
+
     public function createDriver($user,$vehicle_type){
         return Driver::create([
             "user_id" => $user->id,
